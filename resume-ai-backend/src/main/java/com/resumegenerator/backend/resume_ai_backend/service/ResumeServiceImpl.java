@@ -1,5 +1,6 @@
 package com.resumegenerator.backend.resume_ai_backend.service;
 
+import org.json.JSONObject;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.core.io.ClassPathResource;
@@ -46,6 +47,38 @@ public class ResumeServiceImpl implements IResumeService{
             template=template.replace("{{" +entry.getKey()+ "}}", entry.getValue());
         }
         return template;
+    }
+
+    public static JSONObject parseMultipleResponse(String response){
+        JSONObject jsonResponse = new JSONObject();
+
+        //Extract content inside <think> tags
+        int thinkStart = response.indexOf("<think>")+7;
+        int thinkEnd = response.indexOf("</think>");
+
+        if(thinkStart != -1 && thinkEnd != -1) {
+            String thinkContent = response.substring(thinkStart, thinkEnd).trim();
+            jsonResponse.put("think", thinkContent);
+        } else {
+            jsonResponse.put("think", JSONObject.NULL);
+        }
+
+        //Extract content  that is in JSON format
+        int jsonStart = response.indexOf("```json")+7;
+        int jsonEnd = response.lastIndexOf("```");
+        if(jsonStart!= -1 && jsonEnd!= -1 && jsonStart< jsonEnd){
+            String jsonContent = response.substring(jsonStart, jsonEnd).trim();
+            try{
+                JSONObject dataContent = new JSONObject(jsonContent);
+                jsonResponse.put("data", dataContent);
+            } catch(Exception e){
+                jsonResponse.put("data", JSONObject.NULL);
+                System.err.println("Invlaid JSON format in the response: "+e.getMessage());
+            }
+        } else {
+            jsonResponse.put("data", JSONObject.NULL);
+        }
+        return jsonResponse;
     }
 
 }
